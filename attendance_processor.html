@@ -1,0 +1,1336 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محافظة حمص - نظام تحليل بصمة الدوام</title>
+    <!-- Locally bundled UI dependencies for offline use -->
+    <script src="assets/vendor/tailwind.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
+    <!-- SheetJS for Excel Export & Import -->
+    <script src="assets/vendor/xlsx.full.min.js"></script>
+    <!-- Google Fonts: Cairo Font -->
+    <link href="assets/fonts/cairo.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        syrian: {
+                            forest: '#428177',
+                            forestDark: '#054239',
+                            forestDeep: '#002623',
+                            wheatLight: '#edebe0',
+                            wheatMid: '#b9a779',
+                            wheatDark: '#988561',
+                            umberLight: '#6b1f2a',
+                            umberMid: '#4a151e',
+                            umberDark: '#260f14',
+                            charcoalLight: '#ffffff',
+                            charcoalMid: '#3d3a3b',
+                            charcoalDark: '#161616'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f4f3ef;
+            color: #161616;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #edebe0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #428177;
+            border-radius: 4px;
+        }
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.8125rem;
+        }
+        :root {
+            color-scheme: light;
+            --app-forest: #054239;
+            --app-green: #428177;
+            --app-gold: #b9a779;
+            --app-paper: #f3f2eb;
+            --app-ink: #263431;
+        }
+        body {
+            background-color: var(--app-paper);
+            background-image: linear-gradient(rgba(5, 66, 57, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(5, 66, 57, 0.025) 1px, transparent 1px);
+            background-size: 28px 28px;
+            color: var(--app-ink);
+        }
+        body > header {
+            background: var(--app-forest) !important;
+            background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0, rgba(255, 255, 255, 0.025) 1px, transparent 1px, transparent 14px), linear-gradient(110deg, #002623, #054239 58%, #28685e) !important;
+            border-bottom: 3px solid var(--app-gold);
+            box-shadow: 0 4px 16px rgba(0, 38, 35, 0.16);
+        }
+        body > header > div { min-height: 86px; }
+        .brand-emblem {
+            display: grid;
+            place-items: center;
+            width: 68px;
+            height: 68px;
+            flex: 0 0 68px;
+            padding: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(185, 167, 121, 0.9);
+            border-radius: 8px;
+            background: #f3f2eb;
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2), inset 0 0 0 3px rgba(185, 167, 121, 0.18);
+        }
+        .brand-emblem img { width: 100%; height: 100%; object-fit: contain; }
+        .brand-kicker {
+            display: block;
+            margin-bottom: 2px;
+            color: #d3c59f;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .brand-copy h1 { font-size: 19px; line-height: 1.35; }
+        .brand-copy p { color: rgba(243, 242, 235, 0.82); }
+        body .rounded-2xl { border-radius: 8px; }
+        body .rounded-xl { border-radius: 6px; }
+        body .rounded-lg { border-radius: 5px; }
+        input, button { font: inherit; }
+        input[type="time"], input[type="number"], input[type="date"], input[type="month"], input[type="text"] {
+            min-height: 38px;
+            color: var(--app-ink);
+        }
+        input:focus-visible, button:focus-visible, [role="button"]:focus-visible {
+            outline: 3px solid rgba(66, 129, 119, 0.35);
+            outline-offset: 2px;
+        }
+        #dropZone, #empFileInput { cursor: pointer; }
+        #dropZone { min-height: 118px; border-color: rgba(152, 133, 97, 0.7); }
+        #dropZone:hover { border-color: var(--app-green); }
+        .stat-filter-card {
+            position: relative;
+            display: flex;
+            min-width: 0;
+            min-height: 104px;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            border: 1px solid color-mix(in srgb, var(--stat-accent) 26%, white) !important;
+            border-radius: 8px !important;
+            background: linear-gradient(145deg, #fff 0%, color-mix(in srgb, var(--stat-accent) 5%, white) 100%) !important;
+            box-shadow: 0 2px 7px rgba(38, 52, 49, 0.045);
+            cursor: pointer;
+            transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+        }
+        .stat-filter-card[data-stat-filter="all"] { --stat-accent: #28685e; }
+        .stat-filter-card[data-stat-filter="ontime"] { --stat-accent: #35805a; }
+        .stat-filter-card[data-stat-filter="late"] { --stat-accent: #a76b16; }
+        .stat-filter-card[data-stat-filter="early"] { --stat-accent: #ad4b4b; }
+        .stat-filter-card[data-stat-filter="late_and_early"] { --stat-accent: #71618d; }
+        .stat-filter-card[data-stat-filter="absent"] { --stat-accent: #53625f; }
+        .stat-filter-card > div:first-child {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            min-width: 0;
+            min-height: 28px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        .stat-filter-card > div:first-child > span {
+            min-width: 0;
+            flex: 1 1 64px;
+            overflow-wrap: anywhere;
+            color: #485752 !important;
+            line-height: 1.45;
+        }
+        .stat-filter-card > div:first-child > i {
+            display: grid;
+            flex: 0 0 29px;
+            place-items: center;
+            width: 29px;
+            height: 29px;
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--stat-accent) 11%, white);
+            color: var(--stat-accent) !important;
+            font-size: 12px !important;
+        }
+        .stat-filter-card > p {
+            position: relative;
+            z-index: 1;
+            margin-top: 5px;
+            color: var(--stat-accent) !important;
+            font-size: 23px;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            transition: transform 160ms ease;
+        }
+        .stat-filter-card:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(38, 52, 49, 0.1); }
+        .stat-filter-card[aria-pressed="true"] {
+            border-color: var(--stat-accent) !important;
+            background: linear-gradient(145deg, color-mix(in srgb, var(--stat-accent) 10%, white), white) !important;
+            box-shadow: inset 0 0 0 1px var(--stat-accent), 0 7px 15px color-mix(in srgb, var(--stat-accent) 17%, transparent);
+        }
+        .stat-filter-card[aria-pressed="true"]::before {
+            position: absolute;
+            inset-block: 12px;
+            inset-inline-start: 0;
+            width: 3px;
+            border-radius: 3px;
+            background: var(--stat-accent);
+            content: "";
+        }
+        .stat-filter-card[aria-pressed="true"] > p { transform: translateX(-2px); }
+        .stat-filter-card:active { transform: translateY(0) scale(0.985); }
+        @media (hover: none) {
+            .stat-filter-card:hover { transform: none; }
+        }
+        .stats-panel-heading { align-items: flex-start; }
+        .stats-panel-heading h3 { min-width: 0; flex: 1 1 220px; line-height: 1.5; }
+        #dateRangeBadge { min-width: 0; max-width: 100%; flex: 0 1 auto; overflow-wrap: anywhere; white-space: normal; line-height: 1.45; }
+        .detail-header-identity { min-width: 0; flex: 1 1 340px; flex-wrap: wrap; }
+        .detail-header-identity h3 { overflow-wrap: anywhere; }
+        .detail-export-button { flex: 0 0 auto; }
+        #mainTableView, #empDetailView, main .bg-white.rounded-2xl {
+            box-shadow: 0 8px 24px rgba(38, 52, 49, 0.055);
+        }
+        main > .bg-white.rounded-2xl,
+        main > .grid > div {
+            border-color: rgba(152, 133, 97, 0.32);
+            background-color: rgba(255, 255, 255, 0.96);
+        }
+        main > .bg-white.rounded-2xl { border-top: 3px solid var(--app-green); }
+        main > .grid > div:first-child { border-top: 3px solid var(--app-gold); }
+        main > .grid > div:last-child { border-top: 3px solid var(--app-green); }
+        #mainTableView, #empDetailView { border-color: rgba(152, 133, 97, 0.38); }
+        #empDetailView { scroll-margin-top: 100px; }
+        #empSummaryTableBody tr:nth-child(even) { background-color: rgba(243, 242, 235, 0.48); }
+        #empSummaryTableBody tr:nth-child(even):hover { background-color: rgba(185, 167, 121, 0.16); }
+        main > div { animation: dashboard-enter 420ms ease both; }
+        main > div:nth-child(2) { animation-delay: 50ms; }
+        main > div:nth-child(3) { animation-delay: 100ms; }
+        @keyframes dashboard-enter {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #groupedTableContainer thead { position: sticky; top: 0; z-index: 2; }
+        #empSummaryTableBody tr, #modalTableBody tr { transition: background-color 140ms ease; }
+        #empSummaryTableBody tr:hover { background-color: rgba(185, 167, 121, 0.13); }
+        #empSummaryTableBody td { vertical-align: middle; }
+        #groupedTableContainer, #empDetailView .overflow-x-auto {
+            max-width: 100%;
+            overflow-x: auto;
+            overscroll-behavior-inline: contain;
+        }
+        #groupedTableContainer table {
+            width: 100%;
+            min-width: 960px;
+            table-layout: fixed;
+        }
+        #empDetailView .overflow-x-auto table {
+            width: 100%;
+            min-width: 720px;
+            table-layout: fixed;
+        }
+        #groupedTableContainer th, #groupedTableContainer td,
+        #empDetailView th, #empDetailView td {
+            box-sizing: border-box;
+            overflow-wrap: anywhere;
+            white-space: normal;
+            line-height: 1.5;
+            vertical-align: middle;
+        }
+        #groupedTableContainer th:nth-child(1) { width: 12%; }
+        #groupedTableContainer th:nth-child(2) { width: 20%; }
+        #groupedTableContainer th:nth-child(3), #groupedTableContainer th:nth-child(4),
+        #groupedTableContainer th:nth-child(5), #groupedTableContainer th:nth-child(9) { width: 9%; }
+        #groupedTableContainer th:nth-child(6), #groupedTableContainer th:nth-child(7) { width: 11%; }
+        #groupedTableContainer th:nth-child(8) { width: 10%; }
+        #empDetailView th:nth-child(1) { width: 19%; }
+        #empDetailView th:nth-child(2), #empDetailView th:nth-child(3) { width: 16%; }
+        #empDetailView th:nth-child(4), #empDetailView th:nth-child(5) { width: 24.5%; }
+        #empSummaryTableBody td:nth-child(2), #modalTableBody td:first-child { display: table-cell !important; }
+        #modalTableBody td:first-child { white-space: nowrap; }
+        #modalTableBody td:nth-child(2), #modalTableBody td:nth-child(3) { white-space: nowrap; }
+        #modalTableBody td:nth-child(n+4) > span {
+            display: inline-flex;
+            max-width: 100%;
+            flex-wrap: wrap;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            line-height: 1.45;
+        }
+        .offline-note {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 20px;
+            border-top: 1px solid rgba(185, 167, 121, 0.55);
+            background: #e9e7dc;
+            color: #41534e;
+            font-size: 12px;
+            text-align: center;
+        }
+        .offline-note i { color: var(--app-green); }
+        @media (max-width: 640px) {
+            body > header { position: relative; }
+            body > header > div { align-items: center; }
+            .brand-emblem { width: 58px; height: 58px; flex-basis: 58px; }
+            .brand-copy h1 { font-size: 16px; }
+            .brand-copy p { max-width: 235px; line-height: 1.6; }
+            #empDetailView { scroll-margin-top: 16px; }
+            .detail-export-button { width: 100%; }
+            #exportBtn { width: 100%; justify-content: center; }
+            #mainTableView > div:first-child { align-items: flex-start; flex-direction: column; }
+            #mainTableView > div:first-child > span { white-space: normal; }
+            .offline-note { padding-inline: 12px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- App Header with Official Syrian Visual Identity Brand Theme -->
+    <header class="bg-gradient-to-r from-syrian-forestDark via-syrian-forest to-syrian-forestDeep text-white shadow-xl border-b-4 border-syrian-wheatMid sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3.5">
+                <div class="brand-emblem" aria-hidden="true">
+                    <img src="assets/SyrianEagleLogo.png" alt="">
+                </div>
+                <div class="brand-copy">
+                    <span class="brand-kicker">الجمهورية العربية السورية · محافظة حمص</span>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="font-bold text-lg md:text-xl leading-tight tracking-wide">مديرية التنمية الإدارية</h1>
+                    </div>
+                    <p class="text-xs font-medium mt-0.5">نظام تحليل بصمة الدوام</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="exportBtn" onclick="exportToExcel()" class="hidden bg-syrian-wheatMid hover:bg-syrian-wheatDark text-syrian-forestDeep hover:text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition flex items-center gap-2 shadow-lg border border-syrian-wheatLight/30">
+                    <i class="fa-solid fa-file-excel text-base"></i>
+                    <span>تصدير الملخص الإحصائي (Excel)</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- Control Bar / Settings Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-syrian-wheatMid/40 p-5 mb-6 backdrop-blur-sm">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-syrian-wheatLight">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-syrian-forest text-base"></i>
+                    <h2 class="font-bold text-syrian-charcoalMid text-sm md:text-base">ضوابط واشتراطات الدوام الرسمي</h2>
+                </div>
+                <span class="text-xs bg-syrian-wheatLight text-syrian-forestDark font-bold px-3 py-1 rounded-full border border-syrian-wheatMid/40">نظام الوقت: 12 ساعة (ص/م)</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">وقت الحضور الرسمي</label>
+                    <input type="time" id="workStart" value="08:30" onchange="processData()" class="w-full bg-[#fcfbf9] border border-syrian-wheatMid/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-syrian-forest focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">وقت الانصراف الرسمي</label>
+                    <input type="time" id="workEnd" value="14:00" onchange="processData()" class="w-full bg-[#fcfbf9] border border-syrian-wheatMid/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-syrian-forest focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">سماح التأخير (بالدقائق)</label>
+                    <input type="number" id="graceLate" value="15" min="0" max="120" onchange="processData()" class="w-full bg-[#fcfbf9] border border-syrian-wheatMid/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-syrian-forest focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">سماح الخروج المبكر (بالدقائق)</label>
+                    <input type="number" id="graceEarly" value="0" min="0" max="120" onchange="processData()" class="w-full bg-[#fcfbf9] border border-syrian-wheatMid/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-syrian-forest focus:bg-white transition">
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload & Stats Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            
+            <!-- File Upload Zone -->
+            <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-syrian-wheatMid/40 p-5 flex flex-col justify-between gap-4">
+                
+                <div>
+                    <h3 class="font-bold text-syrian-charcoalMid mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-file-arrow-up text-syrian-forest"></i>
+                        <span>1. ملف بصمة الدوام (DAT/TXT)</span>
+                    </h3>
+                    <div id="dropZone" class="border-2 border-dashed border-syrian-wheatMid hover:border-syrian-forest bg-[#fcfbf9] hover:bg-syrian-wheatLight/40 rounded-xl p-4 text-center transition cursor-pointer flex flex-col items-center justify-center mt-2" onclick="document.getElementById('fileInput').click()">
+                        <input type="file" id="fileInput" accept=".dat,.txt,.log" class="hidden" onchange="handleFileUpload(event)">
+                        <i class="fa-solid fa-cloud-arrow-up text-2xl text-syrian-forest mb-1"></i>
+                        <p class="text-xs font-bold text-syrian-charcoalMid">اضغط لرفع ملف البصمة الخاص بالجهاز</p>
+                    </div>
+                    <div id="loadedFileInfo" class="hidden mt-2 p-2 bg-syrian-wheatLight/60 border border-syrian-wheatMid rounded-lg flex items-center justify-between">
+                        <span id="fileName" class="text-xs font-semibold text-slate-700 truncate">data.dat</span>
+                        <span id="fileRecordsCount" class="text-[10px] bg-syrian-forest text-white px-2 py-0.5 rounded font-bold">0 سجل</span>
+                    </div>
+                </div>
+
+                <div class="border-t border-syrian-wheatLight pt-3">
+                    <h3 class="font-bold text-syrian-charcoalMid mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel text-syrian-forest"></i>
+                        <span>2. سجّل الطلاب (Excel)</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-500 mb-2">ربط تلقائي بالاعتماد على الرقم الوظيفي ID والاسم</p>
+                    <div class="border-2 border-dashed border-syrian-wheatMid hover:border-syrian-forest bg-[#fcfbf9] hover:bg-syrian-wheatLight/40 rounded-xl p-3 text-center transition cursor-pointer flex flex-col items-center justify-center" onclick="document.getElementById('empFileInput').click()">
+                        <input type="file" id="empFileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleEmpExcelUpload(event)">
+                        <i class="fa-solid fa-user-plus text-lg text-syrian-forest mb-1"></i>
+                        <p class="text-xs font-bold text-syrian-charcoalMid">استيراد كشف أسماء الطلاب</p>
+                    </div>
+                    <div id="loadedEmpFileInfo" class="hidden mt-2 p-2 bg-syrian-wheatLight/60 border border-syrian-wheatMid rounded-lg flex items-center justify-between">
+                        <span id="empFileName" class="text-xs font-semibold text-slate-700 truncate">employees.xlsx</span>
+                        <span id="empCountBadge" class="text-[10px] bg-syrian-wheatDark text-white px-2 py-0.5 rounded font-bold">0 طالب</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Stats & Quick Analytics -->
+            <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-syrian-wheatMid/40 p-5 flex flex-col justify-between">
+                <div class="stats-panel-heading flex flex-wrap justify-between mb-3 gap-2">
+                    <h3 class="font-bold text-syrian-charcoalMid flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-syrian-forest"></i>
+                        <span>مؤشرات الإحصاء الإجمالي للدوام</span>
+                    </h3>
+                    <span id="dateRangeBadge" class="text-xs text-syrian-charcoalMid bg-syrian-wheatLight border border-syrian-wheatMid/50 px-2.5 py-1 rounded-full font-medium">بانتظار تحميل البيانات</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 my-auto">
+                    <button id="cardFilterAll" data-stat-filter="all" aria-pressed="true" onclick="setCategoryFilter('all')" class="stat-filter-card text-right p-2.5">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] text-syrian-charcoalMid font-bold">إجمالي الطلاب</span>
+                            <i class="fa-solid fa-users text-syrian-wheatDark text-xs"></i>
+                        </div>
+                        <p id="statEmployees" class="text-xl font-extrabold text-syrian-forestDeep">0</p>
+                    </button>
+
+                    <button id="cardFilterOnTime" data-stat-filter="ontime" aria-pressed="false" onclick="setCategoryFilter('ontime')" class="stat-filter-card text-right p-2.5">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] text-emerald-800 font-bold">حالة انتظام</span>
+                            <i class="fa-solid fa-circle-check text-emerald-600 text-xs"></i>
+                        </div>
+                        <p id="statOnTime" class="text-xl font-extrabold text-emerald-800">0</p>
+                    </button>
+
+                    <button id="cardFilterLate" data-stat-filter="late" aria-pressed="false" onclick="setCategoryFilter('late')" class="stat-filter-card text-right p-2.5">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] text-amber-800 font-bold">حالات تأخير</span>
+                            <i class="fa-solid fa-clock text-amber-600 text-xs"></i>
+                        </div>
+                        <p id="statLate" class="text-xl font-extrabold text-amber-800">0</p>
+                    </button>
+
+                    <button id="cardFilterEarly" data-stat-filter="early" aria-pressed="false" onclick="setCategoryFilter('early')" class="stat-filter-card text-right p-2.5">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] text-rose-800 font-bold">خروج مبكر</span>
+                            <i class="fa-solid fa-person-walking-arrow-right text-rose-600 text-xs"></i>
+                        </div>
+                        <p id="statEarly" class="text-xl font-extrabold text-rose-800">0</p>
+                    </button>
+
+                    <button id="cardFilterLateAndEarly" data-stat-filter="late_and_early" aria-pressed="false" onclick="setCategoryFilter('late_and_early')" class="stat-filter-card text-right p-2.5">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] text-purple-900 font-bold">تأخير وخروج</span>
+                            <i class="fa-solid fa-triangle-exclamation text-purple-600 text-xs"></i>
+                        </div>
+                        <p id="statLateAndEarly" class="text-xl font-extrabold text-purple-900">0</p>
+                    </button>
+
+                    <button id="cardFilterAbsent" data-stat-filter="absent" aria-pressed="false" onclick="setCategoryFilter('absent')" class="stat-filter-card text-right p-2.5">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] text-slate-800 font-bold">غياب / لم يبصم</span>
+                            <i class="fa-solid fa-user-slash text-slate-600 text-xs"></i>
+                        </div>
+                        <p id="statAbsent" class="text-xl font-extrabold text-slate-800">0</p>
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between border-t border-syrian-wheatLight pt-3 mt-3 gap-3">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <div class="flex items-center gap-1">
+                            <label class="text-xs font-bold text-slate-600"><i class="fa-regular  text-syrian-forest ml-1"></i>فلتر تاريخ يومي:</label>
+                            <input type="date" id="filterDateDaily" onchange="onDateFilterChange('daily')" class="bg-[#fcfbf9] border border-syrian-wheatMid/50 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-syrian-forest">
+                        </div>
+                        
+                        <div class="flex items-center gap-1">
+                            <label class="text-xs font-bold text-slate-600">شهري:</label>
+                            <input type="month" id="filterDateMonthly" onchange="onDateFilterChange('monthly')" class="bg-[#fcfbf9] border border-syrian-wheatMid/50 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-syrian-forest">
+                        </div>
+
+                        <button onclick="resetDateFilter()" title="إلغاء فلتر التاريخ" class="bg-syrian-wheatLight hover:bg-syrian-wheatMid text-syrian-forestDeep px-2.5 py-1 rounded-lg text-xs font-bold transition">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <div class="relative w-full sm:w-56">
+                            <input type="text" id="searchInput" oninput="filterTable()" placeholder="بحث باسم الطالب أو الرقم..." class="w-full bg-[#fcfbf9] border border-syrian-wheatMid/50 rounded-xl pr-8 pl-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-syrian-forest">
+                            <i class="fa-solid fa-magnifying-glass absolute right-2.5 top-2.5 text-slate-400 text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table View Container (Emp Summary Record Table) -->
+        <div id="mainTableView" class="bg-white rounded-2xl shadow-md border border-syrian-wheatMid/40 overflow-hidden">
+            <div class="p-4 bg-gradient-to-r from-syrian-forestDark to-syrian-forest text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-table-list text-syrian-wheatMid"></i>
+                    <h3 class="font-bold text-sm md:text-base">جدول السجل التجميعي لمؤشرات الطلاب</h3>
+                </div>
+                <span class="text-xs text-syrian-wheatLight bg-white/10 px-3 py-1 rounded-full border border-white/20">انقر على اسم الطالب لعرض السجلات التفصيلية</span>
+            </div>
+
+            <div id="groupedTableContainer" class="overflow-x-auto">
+                <table class="w-full text-right text-xs">
+                    <thead class="bg-syrian-wheatLight/60 text-syrian-forestDeep font-extrabold border-b border-syrian-wheatMid">
+                        <tr>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid">الرقم الوظيفي</th>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid">اسم الطالب (عرض التفاصيل)</th>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid text-center">أيام الدوام</th>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid text-center">أيام الانتظام</th>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid text-center">أيام التأخير</th>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid text-center">أيام الخروج المبكر</th>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid text-center">تأخير وخروج مبكر</th>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid text-center">أيام الغياب / لم يبصم</th>
+                            <th class="px-4 py-3.5 border-b border-syrian-wheatMid text-center">إجمالي الأيام الإجمالية</th>
+                        </tr>
+                    </thead>
+                    <tbody id="empSummaryTableBody" class="divide-y divide-syrian-wheatLight text-slate-700">
+                        <tr>
+                            <td colspan="9" class="text-center py-12 text-slate-400">
+                                <i class="fa-solid fa-folder-open text-4xl mb-3 block text-syrian-wheatMid"></i>
+                                لم يتم تحميل أي ملف بعد. قم برفع ملف بصمة الدوام للتحليل والتصدير.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Employee Detail View Container (Replaces Modal View) -->
+        <div id="empDetailView" class="hidden bg-white rounded-2xl shadow-md border border-syrian-wheatMid/40 overflow-hidden flex flex-col">
+            <!-- Header with Back Button -->
+            <div class="detail-header bg-gradient-to-r from-syrian-forestDark via-syrian-forest to-syrian-forestDeep text-white p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 border-b-2 border-syrian-wheatMid">
+                <div class="detail-header-identity flex items-center gap-3.5">
+                    <button onclick="backToMainTable()" class="bg-white/15 hover:bg-white/25 text-syrian-wheatLight hover:text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 border border-white/20 shadow-sm">
+                        <i class="fa-solid fa-arrow-right text-sm"></i>
+                        <span>العودة للجدول الرئيسي</span>
+                    </button>
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-syrian-wheatMid text-syrian-forestDeep flex items-center justify-center font-bold text-lg sm:text-xl shadow-md border border-white/20">
+                        <i class="fa-solid fa-id-badge"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalEmpName" class="font-bold text-base sm:text-xl leading-tight">سجل الطالب التفصيلي اليومي</h3>
+                        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span id="modalEmpId" class="text-xs bg-white/15 px-2.5 py-0.5 rounded-md font-mono text-syrian-wheatLight">الرقم الوظيفي: -</span>
+                            <span id="modalEmpDaysBadge" class="text-xs bg-syrian-wheatMid text-syrian-forestDeep px-2.5 py-0.5 rounded-md font-bold">0 يوم دوام</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="exportEmployeeToExcel()" class="detail-export-button inline-flex items-center justify-center gap-2 bg-syrian-wheatMid hover:bg-syrian-wheatLight text-syrian-forestDeep px-3.5 py-2 rounded-lg text-xs font-bold transition shadow-sm" type="button">
+                    <i class="fa-solid fa-file-excel" aria-hidden="true"></i>
+                    <span>تصدير سجل الطالب</span>
+                </button>
+            </div>
+
+            <!-- Detail Filter Bar & Quick Stats Cards -->
+            <div class="p-4 bg-syrian-wheatLight/20 border-b border-syrian-wheatMid/40 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-bold text-syrian-forestDark"><i class="fa-solid fa-filter ml-1"></i>تصفية الفترات للطالب:</span>
+                        <input type="date" id="modalFilterDaily" onchange="filterModalRecords()" class="bg-white border border-syrian-wheatMid/60 rounded-xl px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-syrian-forest outline-none">
+                        <input type="month" id="modalFilterMonthly" onchange="filterModalRecords()" class="bg-white border border-syrian-wheatMid/60 rounded-xl px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-syrian-forest outline-none">
+                        <button onclick="resetModalDateFilter()" title="إعادة تعيين الفلتر" class="bg-white border border-syrian-wheatMid/60 hover:bg-syrian-wheatLight text-syrian-forestDeep px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-2xs">
+                            <i class="fa-solid fa-rotate-right ml-1"></i>إلغاء التصفية
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stat Pill Badges -->
+                <div id="modalSummaryBadges" class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                </div>
+            </div>
+
+            <!-- Detail Table Body -->
+            <div class="p-4 overflow-x-auto bg-slate-50/50">
+                <table class="w-full text-right text-xs">
+                    <thead class="bg-syrian-forestDark text-white font-bold shadow-sm">
+                        <tr>
+                            <th class="px-4 py-3">التاريخ واليوم</th>
+                            <th class="px-4 py-3">وقت الحضور (الأول)</th>
+                            <th class="px-4 py-3">وقت الانصراف (الأخير)</th>
+                            <th class="px-4 py-3">حالة الحضور والتأخير</th>
+                            <th class="px-4 py-3">حالة الانصراف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalTableBody" class="divide-y divide-syrian-wheatLight bg-white">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Detail Footer Back Button -->
+            <div class="p-4 bg-white border-t border-syrian-wheatMid/40 flex items-center justify-between">
+                <span class="text-xs text-slate-500 font-medium"><i class="fa-solid fa-circle-info text-syrian-forest ml-1"></i>يمكنك العودة في أي وقت للجدول العام عبر زر الرجوع للأعلى أو الأسفل</span>
+                <button onclick="backToMainTable()" class="bg-syrian-forestDark hover:bg-syrian-forestDeep text-white px-6 py-2 rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <span>العودة للجدول الرئيسي</span>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="offline-note" dir="rtl">
+        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+        <span>Developed by Eng.Muhammad Wazier</span>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let rawLogRecords = [];
+        let groupedReport = [];
+        let empSummaryList = [];
+        let employeeNamesMap = {};
+        let currentCategoryFilter = 'all';
+        let currentModalEmpId = null;
+
+        window.onload = function() {
+            setupDragAndDrop();
+            loadSavedEmployeeNames();
+        };
+
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            if (!dropZone) return;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('bg-syrian-wheatLight/60'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('bg-syrian-wheatLight/60'), false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    handleFileObject(files[0]);
+                }
+            }, false);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) handleFileObject(file);
+        }
+
+        function handleFileObject(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                parseRawText(e.target.result, file.name);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseRawText(text, name) {
+            const lines = text.split('\n');
+            rawLogRecords = [];
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+
+                const parts = trimmed.split(/\s+/);
+                if (parts.length >= 2) {
+                    const empId = parts[0];
+                    const numEmpId = parseInt(empId, 10);
+
+                    if (numEmpId >= 1000) {
+                        const datePart = parts[1];
+                        const timePart = parts[2] || '00:00:00';
+                        const fullDateStr = `${datePart} ${timePart}`;
+                        const dateTimeObj = new Date(fullDateStr.replace(/-/g, '/'));
+
+                        if (!isNaN(dateTimeObj.getTime())) {
+                            rawLogRecords.push({
+                                empId: empId,
+                                dateStr: datePart,
+                                timeStr: timePart,
+                                dateTime: dateTimeObj
+                            });
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('fileName').innerText = name;
+            document.getElementById('fileRecordsCount').innerText = `${rawLogRecords.length} سجل (1000+)`;
+            document.getElementById('loadedFileInfo').classList.remove('hidden');
+            document.getElementById('exportBtn').classList.remove('hidden');
+
+            processData();
+        }
+
+        function formatTime12Hour(dateObj) {
+            let hours = dateObj.getHours();
+            const minutes = dateObj.getMinutes();
+            const ampm = hours >= 12 ? 'م' : 'ص';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+            return `${hours}:${minutesStr} ${ampm}`;
+        }
+
+        function evaluateCheckInStatus(checkInDate, workStartTimeStr, graceLateMins) {
+            const [wHours, wMins] = workStartTimeStr.split(':').map(Number);
+            const officialStart = new Date(checkInDate);
+            officialStart.setHours(wHours, wMins, 0, 0);
+
+            const graceStart = new Date(officialStart.getTime() + graceLateMins * 60000);
+
+            if (checkInDate <= graceStart) {
+                return { text: 'في الوقت', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+            } else {
+                const diffMs = checkInDate - officialStart;
+                const totalDiffMins = Math.floor(diffMs / 60000);
+                const hrs = Math.floor(totalDiffMins / 60);
+                const mins = totalDiffMins % 60;
+                let text = 'تأخير ';
+                if (hrs > 0) text += `(${hrs}س و ${mins}د)`;
+                else text += `(${mins} دقيقة)`;
+
+                return { text: text, color: 'bg-amber-100 text-amber-900 border-amber-300' };
+            }
+        }
+
+        function evaluateCheckOutStatus(checkOutDate, workEndTimeStr, graceEarlyMins) {
+            const [wHours, wMins] = workEndTimeStr.split(':').map(Number);
+            const officialEnd = new Date(checkOutDate);
+            officialEnd.setHours(wHours, wMins, 0, 0);
+
+            const graceEnd = new Date(officialEnd.getTime() - graceEarlyMins * 60000);
+
+            if (checkOutDate >= graceEnd) {
+                return { text: 'منصرف منتظم', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+            } else {
+                const diffMs = officialEnd - checkOutDate;
+                const totalDiffMins = Math.floor(diffMs / 60000);
+                const hrs = Math.floor(totalDiffMins / 60);
+                const mins = totalDiffMins % 60;
+                let text = 'خروج مبكر ';
+                if (hrs > 0) text += `(${hrs}س و ${mins}د)`;
+                else text += `(${mins} دقيقة)`;
+
+                return { text: text, color: 'bg-rose-100 text-rose-900 border-rose-300' };
+            }
+        }
+
+        function loadSavedEmployeeNames() {
+            try {
+                const saved = localStorage.getItem('homs_emp_names_cache');
+                if (saved) {
+                    employeeNamesMap = JSON.parse(saved);
+                    const count = Object.keys(employeeNamesMap).length;
+                    if (count > 0) {
+                        document.getElementById('empFileName').innerText = "سجل الطلاب المحفوظ بشكل دائم";
+                        document.getElementById('empCountBadge').innerText = `${count} طالب (محفوظ)`;
+                        document.getElementById('loadedEmpFileInfo').classList.remove('hidden');
+                    }
+                }
+            } catch (e) {
+                console.log('Storage access handled.');
+            }
+        }
+
+        function saveEmployeeNames() {
+            try {
+                localStorage.setItem('homs_emp_names_cache', JSON.stringify(employeeNamesMap));
+            } catch (e) {
+                console.log('Storage save handled.');
+            }
+        }
+
+        function handleEmpExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                employeeNamesMap = {};
+                let loadedCount = 0;
+
+                json.forEach(row => {
+                    if (row && row.length >= 2) {
+                        const col1 = String(row[0]).trim();
+                        const col2 = String(row[1]).trim();
+
+                        if (/^\d+$/.test(col1)) {
+                            employeeNamesMap[col1] = col2;
+                            loadedCount++;
+                        } else if (/^\d+$/.test(col2)) {
+                            employeeNamesMap[col2] = col1;
+                            loadedCount++;
+                        }
+                    }
+                });
+
+                saveEmployeeNames();
+
+                document.getElementById('empFileName').innerText = file.name;
+                document.getElementById('empCountBadge').innerText = `${loadedCount} طالب (تم الحفظ)`;
+                document.getElementById('loadedEmpFileInfo').classList.remove('hidden');
+
+                processData();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processData() {
+            if (rawLogRecords.length === 0) return;
+
+            const map = new Map();
+            const datesSet = new Set();
+
+            rawLogRecords.forEach(rec => {
+                const key = `${rec.empId}_${rec.dateStr}`;
+                datesSet.add(rec.dateStr);
+
+                if (!map.has(key)) {
+                    map.set(key, {
+                        empId: rec.empId,
+                        dateStr: rec.dateStr,
+                        times: []
+                    });
+                }
+                map.get(key).times.push(rec.dateTime);
+            });
+
+            const registeredEmpIds = Object.keys(employeeNamesMap);
+            datesSet.forEach(dateStr => {
+                registeredEmpIds.forEach(empId => {
+                    const key = `${empId}_${dateStr}`;
+                    if (!map.has(key)) {
+                        map.set(key, {
+                            empId: empId,
+                            dateStr: dateStr,
+                            times: []
+                        });
+                    }
+                });
+            });
+
+            const workStartVal = document.getElementById('workStart').value;
+            const workEndVal = document.getElementById('workEnd').value;
+            const graceLateMins = parseInt(document.getElementById('graceLate').value) || 0;
+            const graceEarlyMins = parseInt(document.getElementById('graceEarly').value) || 0;
+
+            groupedReport = [];
+
+            map.forEach((value) => {
+                const empName = employeeNamesMap[value.empId] || 'غير معرف';
+                
+                if (value.times.length === 0) {
+                    groupedReport.push({
+                        empId: value.empId,
+                        empName: empName,
+                        dateStr: value.dateStr,
+                        checkInTimeStr: 'غائب',
+                        checkOutTimeStr: 'غائب',
+                        inStatus: { text: 'غياب / لم يسجل حضور', color: 'bg-slate-200 text-slate-800 border-slate-400' },
+                        outStatus: { text: 'غياب / لم يسجل خروج', color: 'bg-slate-200 text-slate-800 border-slate-400' },
+                        isAbsent: true
+                    });
+                    return;
+                }
+
+                value.times.sort((a, b) => a - b);
+
+                const checkIn = value.times[0];
+                const checkOut = value.times.length > 1 ? value.times[value.times.length - 1] : null;
+
+                const checkInTime12 = formatTime12Hour(checkIn);
+                const checkOutTime12 = checkOut ? formatTime12Hour(checkOut) : '-';
+
+                const inStatus = evaluateCheckInStatus(checkIn, workStartVal, graceLateMins);
+                const outStatus = checkOut ? evaluateCheckOutStatus(checkOut, workEndVal, graceEarlyMins) : { text: 'لم يبصم خروج', color: 'bg-slate-100 text-slate-500 border-slate-300' };
+
+                groupedReport.push({
+                    empId: value.empId,
+                    empName: empName,
+                    dateStr: value.dateStr,
+                    checkInTimeStr: checkInTime12,
+                    checkOutTimeStr: checkOutTime12,
+                    inStatus: inStatus,
+                    outStatus: outStatus,
+                    isAbsent: false
+                });
+            });
+
+            buildEmpSummaryList();
+            renderTables();
+            updateStats();
+        }
+
+        function buildEmpSummaryList() {
+            const empMap = new Map();
+
+            groupedReport.forEach(r => {
+                if (!empMap.has(r.empId)) {
+                    empMap.set(r.empId, {
+                        empId: r.empId,
+                        empName: r.empName,
+                        ontime: 0,
+                        late: 0,
+                        early: 0,
+                        lateAndEarly: 0,
+                        absent: 0,
+                        totalDays: 0,
+                        records: []
+                    });
+                }
+
+                const empObj = empMap.get(r.empId);
+                empObj.records.push(r);
+                empObj.totalDays++;
+
+                const isLate = r.inStatus.text.includes('تأخير');
+                const isEarly = r.outStatus.text.includes('خروج مبكر');
+
+                if (r.isAbsent) {
+                    empObj.absent++;
+                } else if (isLate && isEarly) {
+                    empObj.lateAndEarly++;
+                } else if (isLate) {
+                    empObj.late++;
+                } else if (isEarly) {
+                    empObj.early++;
+                } else if (r.inStatus.text === 'في الوقت') {
+                    empObj.ontime++;
+                }
+            });
+
+            empSummaryList = Array.from(empMap.values()).sort((a, b) => parseInt(a.empId) - parseInt(b.empId));
+        }
+
+        function setCategoryFilter(category) {
+            currentCategoryFilter = category;
+            
+            const cards = {
+                'all': document.getElementById('cardFilterAll'),
+                'ontime': document.getElementById('cardFilterOnTime'),
+                'late': document.getElementById('cardFilterLate'),
+                'early': document.getElementById('cardFilterEarly'),
+                'late_and_early': document.getElementById('cardFilterLateAndEarly'),
+                'absent': document.getElementById('cardFilterAbsent')
+            };
+
+            Object.keys(cards).forEach(key => {
+                cards[key].setAttribute('aria-pressed', String(key === category));
+            });
+
+            renderTables();
+        }
+
+        function renderTables() {
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+            const dailyVal = document.getElementById('filterDateDaily').value;
+            const monthlyVal = document.getElementById('filterDateMonthly').value;
+
+            const tbody = document.getElementById('empSummaryTableBody');
+            tbody.innerHTML = '';
+
+            const filteredEmps = empSummaryList.filter(emp => {
+                const matchesSearch = emp.empId.toLowerCase().includes(searchVal) || 
+                                      emp.empName.toLowerCase().includes(searchVal);
+
+                let filteredRecords = emp.records;
+                if (dailyVal) {
+                    filteredRecords = filteredRecords.filter(r => r.dateStr === dailyVal);
+                } else if (monthlyVal) {
+                    filteredRecords = filteredRecords.filter(r => r.dateStr.startsWith(monthlyVal));
+                }
+
+                if (filteredRecords.length === 0) return false;
+
+                let matchesCategory = true;
+                if (currentCategoryFilter === 'ontime') {
+                    matchesCategory = filteredRecords.some(r => !r.isAbsent && r.inStatus.text === 'في الوقت');
+                } else if (currentCategoryFilter === 'late') {
+                    matchesCategory = filteredRecords.some(r => r.inStatus.text.includes('تأخير') && !r.outStatus.text.includes('خروج مبكر'));
+                } else if (currentCategoryFilter === 'early') {
+                    matchesCategory = filteredRecords.some(r => r.outStatus.text.includes('خروج مبكر') && !r.inStatus.text.includes('تأخير'));
+                } else if (currentCategoryFilter === 'late_and_early') {
+                    matchesCategory = filteredRecords.some(r => r.inStatus.text.includes('تأخير') && r.outStatus.text.includes('خروج مبكر'));
+                } else if (currentCategoryFilter === 'absent') {
+                    matchesCategory = filteredRecords.some(r => r.isAbsent);
+                }
+
+                return matchesSearch && matchesCategory;
+            });
+
+            if (filteredEmps.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400">لا توجد نتائج مطابقة للفلترة والبحث</td></tr>`;
+            } else {
+                filteredEmps.forEach(emp => {
+                    let recs = emp.records;
+                    if (dailyVal) recs = recs.filter(r => r.dateStr === dailyVal);
+                    else if (monthlyVal) recs = recs.filter(r => r.dateStr.startsWith(monthlyVal));
+
+                    let ontime = 0, late = 0, early = 0, lateAndEarly = 0, absent = 0;
+                    recs.forEach(r => {
+                        const isLate = r.inStatus.text.includes('تأخير');
+                        const isEarly = r.outStatus.text.includes('خروج مبكر');
+                        if (r.isAbsent) absent++;
+                        else if (isLate && isEarly) lateAndEarly++;
+                        else if (isLate) late++;
+                        else if (isEarly) early++;
+                        else if (r.inStatus.text === 'في الوقت') ontime++;
+                    });
+
+                    const workDays = recs.length - absent;
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-syrian-wheatLight/50 transition border-b border-syrian-wheatLight cursor-pointer";
+                    tr.onclick = () => openEmpModal(emp.empId);
+                    tr.innerHTML = `
+                        <td class="px-4 py-3.5 font-bold font-mono text-syrian-forestDark">${emp.empId}</td>
+                        <td class="px-4 py-3.5 font-bold text-syrian-forest hover:text-syrian-forestDark hover:underline">
+                            <span class="text-xs md:text-sm">${emp.empName}</span>
+                        </td>
+                        <td class="px-4 py-3.5 text-center">
+                            <span class="stat-badge bg-syrian-forest/15 text-syrian-forestDark font-extrabold">${workDays}</span>
+                        </td>
+                        <td class="px-4 py-3.5 text-center">
+                            <span class="stat-badge ${ontime > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'}">${ontime}</span>
+                        </td>
+                        <td class="px-4 py-3.5 text-center">
+                            <span class="stat-badge ${late > 0 ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-400'}">${late}</span>
+                        </td>
+                        <td class="px-4 py-3.5 text-center">
+                            <span class="stat-badge ${early > 0 ? 'bg-rose-100 text-rose-900' : 'bg-slate-100 text-slate-400'}">${early}</span>
+                        </td>
+                        <td class="px-4 py-3.5 text-center">
+                            <span class="stat-badge ${lateAndEarly > 0 ? 'bg-purple-100 text-purple-900' : 'bg-slate-100 text-slate-400'}">${lateAndEarly}</span>
+                        </td>
+                        <td class="px-4 py-3.5 text-center">
+                            <span class="stat-badge ${absent > 0 ? 'bg-slate-200 text-slate-800 font-bold' : 'bg-slate-100 text-slate-400'}">${absent}</span>
+                        </td>
+                        <td class="px-4 py-3.5 text-center font-bold text-syrian-forestDeep">${recs.length}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function openEmpModal(empId) {
+            currentModalEmpId = empId;
+            const empName = employeeNamesMap[empId] || 'غير معرف';
+            document.getElementById('modalEmpName').innerText = empName;
+            document.getElementById('modalEmpId').innerText = `الرقم الوظيفي: ${empId}`;
+
+            document.getElementById('modalFilterDaily').value = document.getElementById('filterDateDaily').value;
+            document.getElementById('modalFilterMonthly').value = document.getElementById('filterDateMonthly').value;
+
+            filterModalRecords();
+            
+            // Switch main view to detail view
+            document.getElementById('mainTableView').classList.add('hidden');
+            const detailView = document.getElementById('empDetailView');
+            detailView.classList.remove('hidden');
+            detailView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function backToMainTable() {
+            document.getElementById('empDetailView').classList.add('hidden');
+            document.getElementById('mainTableView').classList.remove('hidden');
+            currentModalEmpId = null;
+        }
+
+        function resetModalDateFilter() {
+            document.getElementById('modalFilterDaily').value = '';
+            document.getElementById('modalFilterMonthly').value = '';
+            filterModalRecords();
+        }
+
+        function getFilteredEmployeeRecords() {
+            if (!currentModalEmpId) return [];
+
+            const daily = document.getElementById('modalFilterDaily').value;
+            const monthly = document.getElementById('modalFilterMonthly').value;
+            let empRecords = groupedReport.filter(r => r.empId === currentModalEmpId);
+
+            if (daily) {
+                empRecords = empRecords.filter(r => r.dateStr === daily);
+            } else if (monthly) {
+                empRecords = empRecords.filter(r => r.dateStr.startsWith(monthly));
+            }
+
+            return empRecords;
+        }
+
+        function filterModalRecords() {
+            if (!currentModalEmpId) return;
+
+            const empRecords = getFilteredEmployeeRecords();
+            const modalTbody = document.getElementById('modalTableBody');
+            modalTbody.innerHTML = '';
+
+            let lates = 0, earlys = 0, absents = 0, ontimes = 0, lateAndEarlys = 0;
+
+            if (empRecords.length === 0) {
+                modalTbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">لا توجد سجلات لهذا الطالب بالتاريخ المحدد</td></tr>`;
+            } else {
+                empRecords.forEach(r => {
+                    const isLate = r.inStatus.text.includes('تأخير');
+                    const isEarly = r.outStatus.text.includes('خروج مبكر');
+
+                    if (r.isAbsent) absents++;
+                    else if (isLate && isEarly) lateAndEarlys++;
+                    else if (isLate) lates++;
+                    else if (isEarly) earlys++;
+                    else if (r.inStatus.text === 'في الوقت') ontimes++;
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-syrian-wheatLight/40 transition border-b border-syrian-wheatLight/60";
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-mono font-bold text-slate-800">
+                            ${r.dateStr}
+                        </td>
+                        <td class="px-4 py-3 font-mono text-syrian-forest font-extrabold text-xs sm:text-sm">
+                            ${r.checkInTimeStr}
+                        </td>
+                        <td class="px-4 py-3 font-mono text-syrian-umberLight font-extrabold text-xs sm:text-sm">
+                            ${r.checkOutTimeStr}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-extrabold shadow-2xs ${r.inStatus.color}">
+                                ${r.inStatus.text}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-extrabold shadow-2xs ${r.outStatus.color}">
+                                ${r.outStatus.text}
+                            </span>
+                        </td>
+                    `;
+                    modalTbody.appendChild(tr);
+                });
+            }
+
+            const workDaysCount = empRecords.length - absents;
+            document.getElementById('modalEmpDaysBadge').innerText = `${workDaysCount} يوم دوام فعلي`;
+
+            document.getElementById('modalSummaryBadges').innerHTML = `
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center shadow-2xs">
+                    <span class="text-[11px] text-emerald-800 font-bold block mb-0.5">حضور منتظم</span>
+                    <span class="text-lg font-extrabold text-emerald-800">${ontimes}</span>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center shadow-2xs">
+                    <span class="text-[11px] text-amber-800 font-bold block mb-0.5">أيام التأخير</span>
+                    <span class="text-lg font-extrabold text-amber-800">${lates}</span>
+                </div>
+                <div class="bg-rose-50 border border-rose-200 rounded-xl p-3 text-center shadow-2xs">
+                    <span class="text-[11px] text-rose-800 font-bold block mb-0.5">خروج مبكر</span>
+                    <span class="text-lg font-extrabold text-rose-800">${earlys}</span>
+                </div>
+                <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-center shadow-2xs">
+                    <span class="text-[11px] text-purple-900 font-bold block mb-0.5">تأخير وخروج</span>
+                    <span class="text-lg font-extrabold text-purple-900">${lateAndEarlys}</span>
+                </div>
+                <div class="bg-slate-100 border border-slate-300 rounded-xl p-3 text-center shadow-2xs">
+                    <span class="text-[11px] text-slate-700 font-bold block mb-0.5">أيام الغياب</span>
+                    <span class="text-lg font-extrabold text-slate-800">${absents}</span>
+                </div>
+            `;
+        }
+
+        function exportEmployeeToExcel() {
+            if (!currentModalEmpId) return;
+
+            const employeeName = employeeNamesMap[currentModalEmpId] || 'غير معرف';
+            const headers = [
+                'الرقم الوظيفي',
+                'اسم الطالب',
+                'التاريخ',
+                'وقت الحضور',
+                'وقت الانصراف',
+                'حالة الحضور',
+                'حالة الانصراف'
+            ];
+            const rows = getFilteredEmployeeRecords().map(record => [
+                record.empId,
+                record.empName,
+                record.dateStr,
+                record.checkInTimeStr,
+                record.checkOutTimeStr,
+                record.inStatus.text,
+                record.outStatus.text
+            ]);
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            worksheet['!views'] = [{ RTL: true }];
+            worksheet['!cols'] = [
+                { wch: 16 },
+                { wch: 32 },
+                { wch: 14 },
+                { wch: 18 },
+                { wch: 18 },
+                { wch: 28 },
+                { wch: 28 }
+            ];
+            worksheet['!autofilter'] = { ref: `A1:G${rows.length + 1}` };
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'سجل الطالب');
+
+            const safeEmployeeName = employeeName.replace(/[\\/:*?"<>|]/g, '_').trim();
+            const daily = document.getElementById('modalFilterDaily').value;
+            const monthly = document.getElementById('modalFilterMonthly').value;
+            const period = daily || monthly || 'كامل_الفترة';
+            XLSX.writeFile(workbook, `سجل_دوام_${currentModalEmpId}_${safeEmployeeName}_${period}.xlsx`);
+        }
+
+        function updateStats() {
+            const uniqueEmployees = empSummaryList.length;
+            let onTimeCount = 0;
+            let lateCount = 0;
+            let earlyCount = 0;
+            let lateAndEarlyCount = 0;
+            let absentCount = 0;
+
+            groupedReport.forEach(r => {
+                if (r.isAbsent) {
+                    absentCount++;
+                } else {
+                    const isLate = r.inStatus.text.includes('تأخير');
+                    const isEarly = r.outStatus.text.includes('خروج مبكر');
+
+                    if (isLate && isEarly) {
+                        lateAndEarlyCount++;
+                    } else if (isLate) {
+                        lateCount++;
+                    } else if (isEarly) {
+                        earlyCount++;
+                    } else if (r.inStatus.text === 'في الوقت') {
+                        onTimeCount++;
+                    }
+                }
+            });
+
+            document.getElementById('statEmployees').innerText = uniqueEmployees;
+            document.getElementById('statOnTime').innerText = onTimeCount;
+            document.getElementById('statLate').innerText = lateCount;
+            document.getElementById('statEarly').innerText = earlyCount;
+            document.getElementById('statLateAndEarly').innerText = lateAndEarlyCount;
+            document.getElementById('statAbsent').innerText = absentCount;
+
+            if (groupedReport.length > 0) {
+                const dates = groupedReport.map(r => r.dateStr).sort();
+                document.getElementById('dateRangeBadge').innerText = `الفترة: من ${dates[0]} إلى ${dates[dates.length - 1]}`;
+            }
+        }
+
+        function onDateFilterChange(type) {
+            if (type === 'daily') {
+                document.getElementById('filterDateMonthly').value = '';
+            } else {
+                document.getElementById('filterDateDaily').value = '';
+            }
+            renderTables();
+        }
+
+        function resetDateFilter() {
+            document.getElementById('filterDateDaily').value = '';
+            document.getElementById('filterDateMonthly').value = '';
+            renderTables();
+        }
+
+        function filterTable() {
+            renderTables();
+        }
+
+        function exportToExcel() {
+            if (empSummaryList.length === 0) return;
+
+            const excelData = empSummaryList.map(emp => ({
+                'رقم الطالب': emp.empId,
+                'اسم الطالب': emp.empName,
+                'أيام الدوام': emp.totalDays - emp.absent,
+                'أيام الحضور المنتظم': emp.ontime,
+                'أيام التأخير': emp.late,
+                'أيام الخروج المبكر': emp.early,
+                'تأخير وخروج مبكر': emp.lateAndEarly,
+                'أيام الغياب / لم يبصم': emp.absent,
+                'إجمالي الأيام الإجمالية': emp.totalDays
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+            if (!worksheet['!views']) worksheet['!views'] = [];
+            worksheet['!views'].push({ RTL: true });
+
+            worksheet['!cols'] = [
+                { wch: 15 },
+                { wch: 25 },
+                { wch: 14 },
+                { wch: 18 },
+                { wch: 15 },
+                { wch: 18 },
+                { wch: 18 },
+                { wch: 20 },
+                { wch: 18 }
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "ملخص دوام الطلاب");
+
+            const fileName = `ملخص_دوام_الطلاب_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+        }
+    </script>
+</body>
+</html>
